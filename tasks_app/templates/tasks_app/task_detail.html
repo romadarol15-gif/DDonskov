@@ -1,0 +1,22 @@
+{% extends 'tasks_app/base.html' %}
+{% block content %}
+<h2>Задача: {{ task.number }}</h2>
+<form method="post" enctype="multipart/form-data" class="mt-4">
+    {% csrf_token %}
+    <div class="row">
+        <div class="col-md-8">
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-success mt-3">Сохранить изменения</button>
+            <a href="/" class="btn btn-secondary mt-3">Назад</a>
+        </div>
+        <div class="col-md-4">
+            {% if task.attachment %}
+            <div class="card p-3 mb-3">
+                <h5>Прикрепленный файл</h5>
+                <a href="{{ task.attachment.url }}" target="_blank" class="btn btn-outline-info">Скачать / Открыть</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</form>
+{% endblock %}

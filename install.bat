@@ -1,0 +1,13 @@
+@echo off
+echo Creating virtual environment...
+python -m venv venv
+call venv\Scripts\activate.bat
+echo Installing dependencies...
+pip install -r requirements.txt
+echo Applying migrations...
+python manage.py makemigrations tasks_app
+python manage.py migrate
+echo Populating initial data (Users, Tasks)...
+python setup_data.py
+echo Installation complete! You can now run run.bat
+pause
