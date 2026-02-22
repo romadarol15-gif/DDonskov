@@ -12,6 +12,7 @@ def create_data():
         {'username': 'admin', 'role': 'superuser', 'password': '123'},
         {'username': 'director', 'role': 'director', 'password': '123'},
         {'username': 'manager', 'role': 'manager', 'password': '123'},
+        {'username': 'editor_kb', 'role': 'editor', 'password': '123'},
         {'username': 'emp1', 'role': 'employee', 'password': '123'},
         {'username': 'emp2', 'role': 'employee', 'password': '123'},
         {'username': 'emp3', 'role': 'employee', 'password': '123'},

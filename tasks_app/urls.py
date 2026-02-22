@@ -3,6 +3,11 @@ from . import views
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
+    path('archive/', views.archive, name='archive'),
+    path('calendar/', views.calendar_view, name='calendar'),
+    path('kb/', views.kb_list, name='kb_list'),
+    path('kb/new/', views.kb_create, name='kb_create'),
+    path('kb/<int:pk>/delete/', views.kb_delete, name='kb_delete'),
     path('task/new/', views.task_create, name='task_create'),
     path('task/<int:pk>/', views.task_detail, name='task_detail'),
     path('task/<int:pk>/comment/', views.add_comment, name='add_comment'),

@@ -1,14 +1,14 @@
 from django import forms
-from .models import Task, User
-from django.db.models import Q
+from .models import Task, User, KnowledgeBaseArticle
 
 class TaskForm(forms.ModelForm):
     class Meta:
         model = Task
-        fields = ['title', 'priority', 'description', 'contact_info', 'equipment_type', 'model_info', 'status', 'assignee', 'attachment']
+        fields = ['title', 'priority', 'deadline', 'description', 'contact_info', 'equipment_type', 'model_info', 'status', 'assignee', 'attachment']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control'}),
-            'priority': forms.Select(attrs={'class': 'form-select fw-bold text-dark bg-warning bg-opacity-75'}),
+            'priority': forms.Select(attrs={'class': 'form-select fw-bold bg-opacity-75'}),
+            'deadline': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'contact_info': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'equipment_type': forms.Select(attrs={'class': 'form-select'}),
@@ -27,33 +27,11 @@ class TaskForm(forms.ModelForm):
             else:
                 self.fields['assignee'].queryset = User.objects.filter(role='employee')
 
-class UserProfileForm(forms.ModelForm):
-    class Meta:
-        model = User
-        fields = ['first_name', 'last_name', 'email']
-        labels = {
-            'first_name': 'Имя',
-            'last_name': 'Фамилия',
-            'email': 'Email'
-        }
-        widgets = {
-            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'email': forms.EmailInput(attrs={'class': 'form-control'}),
-        }
-
 class UserCreateForm(forms.ModelForm):
     password = forms.CharField(label="Пароль", widget=forms.PasswordInput(attrs={'class': 'form-control'}))
     class Meta:
         model = User
         fields = ['username', 'first_name', 'last_name', 'email', 'role']
-        labels = {
-            'username': 'Логин',
-            'first_name': 'Имя',
-            'last_name': 'Фамилия',
-            'email': 'Email',
-            'role': 'Роль'
-        }
         widgets = {
             'username': forms.TextInput(attrs={'class': 'form-control'}),
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
@@ -70,7 +48,24 @@ class UserCreateForm(forms.ModelForm):
             self.fields['role'].choices = [c for c in choices if c[0] != 'superuser']
 
 class UserEditForm(UserCreateForm):
-    password = forms.CharField(label="Новый пароль (оставьте пустым, если не хотите менять)", required=False, widget=forms.PasswordInput(attrs={'class': 'form-control'}))
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    password = forms.CharField(label="Новый пароль (оставьте пустым)", required=False, widget=forms.PasswordInput(attrs={'class': 'form-control'}))
+
+class UserProfileForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'email']
+        widgets = {
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+        }
+
+class KBArticleForm(forms.ModelForm):
+    class Meta:
+        model = KnowledgeBaseArticle
+        fields = ['title', 'description', 'file']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'file': forms.FileInput(attrs={'class': 'form-control', 'accept': '.pdf,.doc,.docx'}),
+        }

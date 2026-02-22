@@ -1,7 +1,7 @@
 {% extends 'tasks_app/base.html' %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold"><i class="bi bi-card-list text-primary"></i> Панель задач</h2>
+    <h2 class="fw-bold"><i class="bi bi-card-list text-primary"></i> Активные задачи</h2>
     {% if user.role == 'superuser' or user.role == 'director' %}
         <a href="{% url 'task_create' %}" class="btn btn-primary px-4 py-2 rounded-pill shadow-sm"><i class="bi bi-plus-lg"></i> Новая задача</a>
     {% endif %}
@@ -18,7 +18,9 @@
             <select name="status" class="form-select rounded-3">
                 <option value="">Все статусы</option>
                 {% for st_val, st_name in statuses %}
+                {% if st_val != 'closed' %}
                 <option value="{{ st_val }}" {% if current_status == st_val %}selected{% endif %}>{{ st_name }}</option>
+                {% endif %}
                 {% endfor %}
             </select>
         </div>
@@ -40,12 +42,13 @@
 
 <div class="card overflow-hidden">
     <div class="table-responsive">
-        <table class="table table-dark table-hover mb-0 align-middle">
+        <table class="table table-hover mb-0 align-middle">
             <thead>
                 <tr>
                     <th class="ps-4">Приоритет</th>
                     <th>Номер</th>
                     <th>Название</th>
+                    <th>Дедлайн</th>
                     <th>Оборудование</th>
                     <th>Статус</th>
                     <th>Ответственный</th>
@@ -63,13 +66,23 @@
                     </td>
                     <td class="fw-bold text-primary">{{ task.number }}</td>
                     <td>{{ task.title }}</td>
+                    <td>
+                        {% if task.deadline %}
+                            {% if task.is_overdue %}
+                                <span class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> Просрочено ({{ task.deadline|date:"d.m" }})</span>
+                            {% else %}
+                                <span>{{ task.deadline|date:"d.m.Y H:i" }}</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-muted small">Без срока</span>
+                        {% endif %}
+                    </td>
                     <td><i class="bi bi-cpu text-secondary me-2"></i> {{ task.get_equipment_type_display }}</td>
                     <td>
                         {% if task.status == 'new' %}<span class="badge bg-danger shadow-sm">Новая</span>
                         {% elif task.status == 'assigned' %}<span class="badge bg-warning text-dark shadow-sm">Назначена</span>
                         {% elif task.status == 'in_progress' %}<span class="badge bg-primary shadow-sm">В работе</span>
                         {% elif task.status == 'resolved' %}<span class="badge bg-success shadow-sm">Решена</span>
-                        {% elif task.status == 'closed' %}<span class="badge bg-secondary shadow-sm">Закрыта</span>
                         {% else %}<span class="badge bg-info text-dark shadow-sm">{{ task.get_status_display }}</span>{% endif %}
                     </td>
                     <td>
@@ -83,14 +96,14 @@
                         {% endif %}
                     </td>
                     <td class="text-end pe-4">
-                        <a href="{% url 'task_detail' task.pk %}" class="btn btn-sm btn-outline-light rounded-pill px-3">Открыть <i class="bi bi-chevron-right ms-1" style="font-size: 0.7em;"></i></a>
+                        <a href="{% url 'task_detail' task.pk %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Открыть <i class="bi bi-chevron-right ms-1" style="font-size: 0.7em;"></i></a>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" class="text-center py-5">
+                    <td colspan="8" class="text-center py-5">
                         <i class="bi bi-inbox text-muted display-4 d-block mb-3"></i>
-                        <p class="text-muted fs-5">Задач по вашему запросу не найдено.</p>
+                        <p class="text-muted fs-5">Открытых задач пока нет.</p>
                     </td>
                 </tr>
                 {% endfor %}

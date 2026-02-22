@@ -2,8 +2,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout
 from django.contrib import messages
-from .models import Task, User, TaskComment, TaskLog
-from .forms import TaskForm, UserProfileForm, UserCreateForm, UserEditForm
+from .models import Task, User, TaskComment, TaskLog, KnowledgeBaseArticle
+from .forms import TaskForm, UserProfileForm, UserCreateForm, UserEditForm, KBArticleForm
 from django.db.models import Count, Q, Case, When, Value, IntegerField
 from django.utils import timezone
 from datetime import timedelta
@@ -17,28 +17,25 @@ def custom_logout(request):
 
 @login_required
 def dashboard(request):
+    if request.user.role == 'editor':
+        return redirect('kb_list')
+        
     query = request.GET.get('q', '')
     status_filter = request.GET.get('status', '')
     equip_filter = request.GET.get('equipment', '')
 
     if request.user.role == 'employee':
-        tasks = Task.objects.filter(Q(assignee=request.user) | Q(assignee__isnull=True))
+        tasks = Task.objects.filter(Q(assignee=request.user) | Q(assignee__isnull=True)).exclude(status='closed')
     else:
-        tasks = Task.objects.all()
+        tasks = Task.objects.exclude(status='closed')
 
     if query:
         tasks = tasks.filter(Q(number__icontains=query) | Q(title__icontains=query) | Q(contact_info__icontains=query))
     if status_filter:
         tasks = tasks.filter(status=status_filter)
-    else:
-        if not query:
-            if request.user.role == 'employee':
-                tasks = tasks.exclude(status='closed')
-
     if equip_filter:
         tasks = tasks.filter(equipment_type=equip_filter)
 
-    # Сортировка по приоритету и свежести
     tasks = tasks.annotate(
         priority_weight=Case(
             When(priority='critical', then=Value(1)),
@@ -56,9 +53,70 @@ def dashboard(request):
         'equipments': Task.EQUIPMENT_CHOICES,
         'q': query,
         'current_status': status_filter,
-        'current_equip': equip_filter
+        'current_equip': equip_filter,
+        'now': timezone.now()
     }
     return render(request, 'tasks_app/dashboard.html', context)
+
+@login_required
+def archive(request):
+    if request.user.role == 'employee':
+        tasks = Task.objects.filter(assignee=request.user, status='closed').order_by('-updated_at')
+    else:
+        tasks = Task.objects.filter(status='closed').order_by('-updated_at')
+    
+    return render(request, 'tasks_app/archive.html', {'tasks': tasks})
+
+@login_required
+def calendar_view(request):
+    if request.user.role == 'employee':
+        tasks = Task.objects.filter(assignee=request.user).exclude(status__in=['resolved', 'closed']).exclude(deadline__isnull=True)
+    else:
+        tasks = Task.objects.exclude(status__in=['resolved', 'closed']).exclude(deadline__isnull=True)
+        
+    events = []
+    for t in tasks:
+        color = '#ef4444' if t.is_overdue else '#3b82f6'
+        events.append({
+            'title': f"{t.number} ({t.assignee.username if t.assignee else 'Нет'})",
+            'start': t.deadline.isoformat(),
+            'url': f"/task/{t.pk}/",
+            'color': color
+        })
+        
+    return render(request, 'tasks_app/calendar.html', {'events': json.dumps(events)})
+
+@login_required
+def kb_list(request):
+    articles = KnowledgeBaseArticle.objects.all().order_by('-created_at')
+    can_edit = request.user.role in ['superuser', 'director', 'editor']
+    return render(request, 'tasks_app/kb.html', {'articles': articles, 'can_edit': can_edit})
+
+@login_required
+def kb_create(request):
+    if request.user.role not in ['superuser', 'director', 'editor']:
+        return redirect('kb_list')
+        
+    if request.method == 'POST':
+        form = KBArticleForm(request.POST, request.FILES)
+        if form.is_valid():
+            article = form.save(commit=False)
+            article.uploaded_by = request.user
+            article.save()
+            messages.success(request, 'Документ успешно добавлен в Базу знаний.')
+            return redirect('kb_list')
+    else:
+        form = KBArticleForm()
+    return render(request, 'tasks_app/kb_form.html', {'form': form, 'title': 'Добавить документ'})
+
+@login_required
+def kb_delete(request, pk):
+    if request.user.role not in ['superuser', 'director', 'editor']:
+        return redirect('kb_list')
+    article = get_object_or_404(KnowledgeBaseArticle, pk=pk)
+    article.delete()
+    messages.success(request, 'Документ удален из Базы знаний.')
+    return redirect('kb_list')
 
 @login_required
 def task_detail(request, pk):
@@ -72,6 +130,7 @@ def task_detail(request, pk):
         old_status = task.get_status_display()
         old_priority = task.get_priority_display()
         old_assignee = task.assignee.username if task.assignee else "Не назначен"
+        old_deadline = task.deadline
 
         form = TaskForm(request.POST, request.FILES, instance=task, user=request.user)
         if form.is_valid():
@@ -85,9 +144,10 @@ def task_detail(request, pk):
             new_assignee = new_task.assignee.username if new_task.assignee else "Не назначен"
             if new_assignee != old_assignee:
                 changes.append(f"Ответственный: '{old_assignee}' → '{new_assignee}'")
+            if new_task.deadline != old_deadline:
+                changes.append(f"Дедлайн обновлен")
 
             new_task.save()
-            
             for change in changes:
                 TaskLog.objects.create(task=new_task, user=request.user, action=change)
 
@@ -145,7 +205,6 @@ def user_management(request):
     if request.user.role not in ['superuser', 'director']:
         messages.error(request, 'У вас нет прав для управления пользователями.')
         return redirect('dashboard')
-        
     users = User.objects.all().order_by('username')
     return render(request, 'tasks_app/user_management.html', {'users': users})
 
@@ -153,7 +212,6 @@ def user_management(request):
 def user_create(request):
     if request.user.role not in ['superuser', 'director']:
         return redirect('dashboard')
-        
     if request.method == 'POST':
         form = UserCreateForm(request.POST, current_user=request.user)
         if form.is_valid():
@@ -173,13 +231,10 @@ def user_create(request):
 def user_edit(request, pk):
     if request.user.role not in ['superuser', 'director']:
         return redirect('dashboard')
-        
     user_to_edit = get_object_or_404(User, pk=pk)
-    
     if user_to_edit.is_superuser and not request.user.is_superuser:
         messages.error(request, 'У вас нет прав на редактирование суперпользователя.')
         return redirect('user_management')
-
     if request.method == 'POST':
         form = UserEditForm(request.POST, instance=user_to_edit, current_user=request.user)
         if form.is_valid():
@@ -215,7 +270,6 @@ def user_delete(request, pk):
 
 @login_required
 def stats(request):
-    # Расчет среднего времени решения задач
     avg_time_data = []
     employees = User.objects.filter(role='employee')
     for emp in employees:
@@ -235,11 +289,9 @@ def stats(request):
     if request.user.role == 'employee':
         status_counts = list(Task.objects.filter(assignee=request.user).values('status').annotate(count=Count('id')))
         equip_counts = list(Task.objects.filter(assignee=request.user).values('equipment_type').annotate(count=Count('id')))
-        
         last_30_days = timezone.now() - timedelta(days=30)
         recent_tasks = Task.objects.filter(assignee=request.user, created_at__gte=last_30_days).count()
         completed_tasks = Task.objects.filter(assignee=request.user, status__in=['resolved', 'closed']).count()
-        
         context = {
             'status_counts': json.dumps(status_counts),
             'equip_counts': json.dumps(equip_counts),
@@ -256,7 +308,6 @@ def stats(request):
     status_counts = list(Task.objects.values('status').annotate(count=Count('id')))
     equip_counts = list(Task.objects.values('equipment_type').annotate(count=Count('id')))
     employee_stats = User.objects.filter(role='employee').annotate(task_count=Count('tasks')).order_by('-task_count')
-    
     total_tasks = Task.objects.count()
     unassigned_tasks = Task.objects.filter(assignee__isnull=True).count()
     completed_all_time = Task.objects.filter(status__in=['resolved', 'closed']).count()
@@ -277,27 +328,20 @@ def stats(request):
 def export_stats_csv(request):
     if request.user.role not in ['superuser', 'director', 'manager']:
         return redirect('dashboard')
-        
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="crm_stats_report.csv"'
     response.write(u'\ufeff'.encode('utf8'))
     writer = csv.writer(response, delimiter=';')
-    
     writer.writerow(['Отчет по задачам CRM'])
-    writer.writerow(['Номер', 'Приоритет', 'Название', 'Оборудование', 'Статус', 'Ответственный', 'Создана', 'Обновлена'])
+    writer.writerow(['Номер', 'Приоритет', 'Название', 'Оборудование', 'Статус', 'Ответственный', 'Дедлайн', 'Создана', 'Обновлена'])
     
     tasks = Task.objects.all().order_by('-created_at')
     for t in tasks:
         assignee = t.assignee.username if t.assignee else 'Не назначен'
+        dl = t.deadline.strftime("%Y-%m-%d %H:%M") if t.deadline else 'Без срока'
         writer.writerow([
-            t.number, 
-            t.get_priority_display(), 
-            t.title, 
-            t.get_equipment_type_display(), 
-            t.get_status_display(), 
-            assignee, 
-            t.created_at.strftime("%Y-%m-%d %H:%M"), 
+            t.number, t.get_priority_display(), t.title, t.get_equipment_type_display(), 
+            t.get_status_display(), assignee, dl, t.created_at.strftime("%Y-%m-%d %H:%M"), 
             t.updated_at.strftime("%Y-%m-%d %H:%M")
         ])
-        
     return response

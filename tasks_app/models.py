@@ -1,11 +1,13 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.utils import timezone
 
 class User(AbstractUser):
     ROLE_CHOICES = (
         ('superuser', 'Суперпользователь'),
         ('director', 'Руководитель'),
         ('manager', 'Менеджер'),
+        ('editor', 'Редактор БЗ'),
         ('employee', 'Сотрудник'),
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='employee')
@@ -43,13 +45,20 @@ class Task(models.Model):
     model_info = models.CharField(max_length=100, verbose_name="Модель")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='new', verbose_name="Статус")
     assignee = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks', verbose_name="Ответственный")
+    deadline = models.DateTimeField(null=True, blank=True, verbose_name="Дедлайн")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    comments = models.TextField(blank=True, verbose_name="Старые комментарии") # Оставлено для обратной совместимости БД
+    comments = models.TextField(blank=True, verbose_name="Старые комментарии")
     attachment = models.FileField(upload_to='attachments/', blank=True, null=True, verbose_name="Прикрепленный файл")
 
     def __str__(self):
         return f"{self.number} - {self.title}"
+        
+    @property
+    def is_overdue(self):
+        if self.deadline and self.status not in ['resolved', 'closed']:
+            return timezone.now() > self.deadline
+        return False
 
 class TaskComment(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='task_comments')
@@ -62,3 +71,13 @@ class TaskLog(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     action = models.CharField(max_length=255, verbose_name="Действие")
     created_at = models.DateTimeField(auto_now_add=True)
+
+class KnowledgeBaseArticle(models.Model):
+    title = models.CharField(max_length=255, verbose_name="Название документа")
+    description = models.TextField(blank=True, verbose_name="Краткое описание")
+    file = models.FileField(upload_to='kb_files/', verbose_name="PDF Файл")
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='kb_uploads')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.title
