@@ -1,5 +1,6 @@
 import os
 import django
+import random
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'crm_project.settings')
 django.setup()
@@ -28,6 +29,7 @@ def create_data():
     print("Users created.")
 
     equipments = ['camera', 'dvr', 'intercom', 'switch', 'acs', 'ops']
+    priorities = ['low', 'medium', 'high', 'critical']
     emp = User.objects.get(username='emp1')
     
     for idx, eq in enumerate(equipments):
@@ -37,6 +39,7 @@ def create_data():
                 Task.objects.create(
                     title=f"Тестовая задача {eq} {i+1}",
                     number=num,
+                    priority=random.choice(priorities),
                     description="Описание поломки или задачи по настройке. Клиент жалуется на неисправность.",
                     contact_info="Иван Иванов, +7 999 123 45 67",
                     equipment_type=eq,

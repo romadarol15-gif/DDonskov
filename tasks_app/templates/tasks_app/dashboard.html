@@ -43,7 +43,8 @@
         <table class="table table-dark table-hover mb-0 align-middle">
             <thead>
                 <tr>
-                    <th class="ps-4">Номер</th>
+                    <th class="ps-4">Приоритет</th>
+                    <th>Номер</th>
                     <th>Название</th>
                     <th>Оборудование</th>
                     <th>Статус</th>
@@ -54,7 +55,13 @@
             <tbody>
                 {% for task in tasks %}
                 <tr>
-                    <td class="ps-4 fw-bold text-primary">{{ task.number }}</td>
+                    <td class="ps-4">
+                        {% if task.priority == 'critical' %}<span class="badge bg-danger pulse"><i class="bi bi-fire"></i> Крит</span>
+                        {% elif task.priority == 'high' %}<span class="badge bg-warning text-dark"><i class="bi bi-arrow-up-circle"></i> Высок</span>
+                        {% elif task.priority == 'medium' %}<span class="badge bg-info text-dark">Средн</span>
+                        {% else %}<span class="badge bg-secondary">Низкий</span>{% endif %}
+                    </td>
+                    <td class="fw-bold text-primary">{{ task.number }}</td>
                     <td>{{ task.title }}</td>
                     <td><i class="bi bi-cpu text-secondary me-2"></i> {{ task.get_equipment_type_display }}</td>
                     <td>
@@ -81,7 +88,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="text-center py-5">
+                    <td colspan="7" class="text-center py-5">
                         <i class="bi bi-inbox text-muted display-4 d-block mb-3"></i>
                         <p class="text-muted fs-5">Задач по вашему запросу не найдено.</p>
                     </td>

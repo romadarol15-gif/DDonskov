@@ -27,9 +27,16 @@ class Task(models.Model):
         ('acs', 'СКУД'),
         ('ops', 'ОПС'),
     ]
+    PRIORITY_CHOICES = [
+        ('low', 'Низкий'),
+        ('medium', 'Средний'),
+        ('high', 'Высокий'),
+        ('critical', 'Критический'),
+    ]
     
     title = models.CharField(max_length=200, verbose_name="Название")
     number = models.CharField(max_length=50, unique=True, verbose_name="Номер задачи")
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium', verbose_name="Приоритет")
     description = models.TextField(verbose_name="Описание")
     contact_info = models.TextField(verbose_name="Контактные данные")
     equipment_type = models.CharField(max_length=50, choices=EQUIPMENT_CHOICES, verbose_name="Тип оборудования")
@@ -38,8 +45,20 @@ class Task(models.Model):
     assignee = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks', verbose_name="Ответственный")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    comments = models.TextField(blank=True, verbose_name="Комментарии")
+    comments = models.TextField(blank=True, verbose_name="Старые комментарии") # Оставлено для обратной совместимости БД
     attachment = models.FileField(upload_to='attachments/', blank=True, null=True, verbose_name="Прикрепленный файл")
 
     def __str__(self):
         return f"{self.number} - {self.title}"
+
+class TaskComment(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='task_comments')
+    author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    text = models.TextField(verbose_name="Текст сообщения")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class TaskLog(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='logs')
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    action = models.CharField(max_length=255, verbose_name="Действие")
+    created_at = models.DateTimeField(auto_now_add=True)

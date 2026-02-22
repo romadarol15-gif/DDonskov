@@ -5,16 +5,16 @@ from django.db.models import Q
 class TaskForm(forms.ModelForm):
     class Meta:
         model = Task
-        fields = ['title', 'description', 'contact_info', 'equipment_type', 'model_info', 'status', 'assignee', 'comments', 'attachment']
+        fields = ['title', 'priority', 'description', 'contact_info', 'equipment_type', 'model_info', 'status', 'assignee', 'attachment']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'priority': forms.Select(attrs={'class': 'form-select fw-bold text-dark bg-warning bg-opacity-75'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'contact_info': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'equipment_type': forms.Select(attrs={'class': 'form-select'}),
             'model_info': forms.TextInput(attrs={'class': 'form-control'}),
-            'status': forms.Select(attrs={'class': 'form-select'}),
+            'status': forms.Select(attrs={'class': 'form-select fw-bold'}),
             'assignee': forms.Select(attrs={'class': 'form-select'}),
-            'comments': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'attachment': forms.FileInput(attrs={'class': 'form-control'}),
         }
         
@@ -23,10 +23,8 @@ class TaskForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if user:
             if user.role == 'employee':
-                # Employee can only assign themselves or leave it unassigned
                 self.fields['assignee'].queryset = User.objects.filter(id=user.id)
             else:
-                # Directors/Admins can assign any employee
                 self.fields['assignee'].queryset = User.objects.filter(role='employee')
 
 class UserProfileForm(forms.ModelForm):
@@ -68,7 +66,6 @@ class UserCreateForm(forms.ModelForm):
         current_user = kwargs.pop('current_user', None)
         super().__init__(*args, **kwargs)
         if current_user and current_user.role != 'superuser':
-            # Directors cannot create superusers
             choices = list(User.ROLE_CHOICES)
             self.fields['role'].choices = [c for c in choices if c[0] != 'superuser']
 
@@ -77,4 +74,3 @@ class UserEditForm(UserCreateForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Inherits the superuser restriction from UserCreateForm

@@ -1,8 +1,15 @@
 {% extends 'tasks_app/base.html' %}
 {% block content %}
-<div class="mb-4">
-    <h2 class="fw-bold"><i class="bi bi-graph-up text-primary"></i> {% if is_employee %}Моя статистика{% else %}Аналитика компании{% endif %}</h2>
-    <p class="text-muted">Актуальные данные по заявкам и эффективности работы.</p>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0"><i class="bi bi-graph-up text-primary"></i> {% if is_employee %}Моя статистика{% else %}Аналитика компании{% endif %}</h2>
+        <p class="text-muted">Актуальные данные по заявкам и эффективности работы.</p>
+    </div>
+    {% if not is_employee %}
+    <div>
+        <a href="{% url 'export_stats_csv' %}" class="btn btn-success rounded-pill px-4 shadow"><i class="bi bi-file-earmark-excel"></i> Выгрузить CSV отчет</a>
+    </div>
+    {% endif %}
 </div>
 
 <!-- TOP METRICS CARDS -->
@@ -55,8 +62,35 @@
             </div>
         </div>
     </div>
+    
+    <!-- Среднее время решения таблица -->
     <div class="col-md-6 mb-4">
         <div class="card h-100">
+            <div class="card-header"><h5 class="mb-0 fw-bold"><i class="bi bi-stopwatch text-warning"></i> Среднее время решения задач</h5></div>
+            <div class="card-body p-0">
+                <table class="table table-dark table-hover mb-0">
+                    <thead>
+                        <tr><th class="ps-4">Сотрудник</th><th class="text-end pe-4">Ср. время</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for avg in avg_time_data %}
+                        <tr>
+                            <td class="ps-4"><i class="bi bi-person text-secondary"></i> {{ avg.name }}</td>
+                            <td class="text-end pe-4"><span class="badge bg-primary fs-6 shadow-sm">{{ avg.time }}</span></td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="2" class="text-center text-muted py-4">Нет завершенных задач для расчета</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
             <div class="card-header"><h5 class="mb-0 fw-bold">Популярное оборудование</h5></div>
             <div class="card-body">
                 <canvas id="equipChart"></canvas>

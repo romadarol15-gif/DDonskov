@@ -9,26 +9,85 @@
         <span class="text-muted small">Создана: {{ task.created_at|date:"d.m.Y H:i" }}</span>
     </div>
     <div class="card-body">
-        <form method="post" enctype="multipart/form-data">
-            {% csrf_token %}
-            <div class="row">
-                <div class="col-md-8 border-end border-secondary">
+        <div class="row">
+            <!-- Левая колонка с формой -->
+            <div class="col-md-7 border-end border-secondary pe-4">
+                <form method="post" enctype="multipart/form-data" id="taskForm">
+                    {% csrf_token %}
                     {{ form.as_p }}
-                </div>
-                <div class="col-md-4">
-                    <div class="bg-dark p-3 rounded border border-secondary mb-3">
+                    
+                    <div class="bg-dark p-3 rounded border border-secondary mb-3 mt-4">
                         <h5><i class="bi bi-paperclip"></i> Вложения</h5>
                         {% if task.attachment %}
                         <p class="text-truncate" title="{{ task.attachment.name }}">{{ task.attachment.name }}</p>
-                        <a href="{{ task.attachment.url }}" target="_blank" class="btn btn-sm btn-info w-100"><i class="bi bi-download"></i> Скачать файл</a>
+                        <a href="{{ task.attachment.url }}" target="_blank" class="btn btn-sm btn-info"><i class="bi bi-download"></i> Скачать файл</a>
                         {% else %}
-                        <p class="text-muted small">Файлы не прикреплены</p>
+                        <p class="text-muted small mb-0">Файлы пока не прикреплены</p>
                         {% endif %}
                     </div>
-                    <button type="submit" class="btn btn-success w-100 py-2"><i class="bi bi-save"></i> Сохранить изменения</button>
-                </div>
+                    <button type="submit" class="btn btn-success w-100 py-2"><i class="bi bi-save"></i> Обновить данные задачи</button>
+                </form>
             </div>
-        </form>
+            
+            <!-- Правая колонка: Чат и Логи -->
+            <div class="col-md-5 ps-4">
+                <ul class="nav nav-tabs" id="myTab" role="tablist">
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link active bg-dark text-light border-secondary border-bottom-0 fw-bold" id="comments-tab" data-bs-toggle="tab" data-bs-target="#comments" type="button" role="tab"><i class="bi bi-chat-dots"></i> Чат</button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link bg-dark text-muted border-secondary border-bottom-0" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs" type="button" role="tab"><i class="bi bi-clock-history"></i> История изменений</button>
+                  </li>
+                </ul>
+                <div class="tab-content border border-secondary border-top-0 p-3 bg-dark rounded-bottom mb-3" id="myTabContent" style="min-height: 450px; max-height: 550px; overflow-y: auto;">
+                  
+                  <!-- Вкладка Чата -->
+                  <div class="tab-pane fade show active" id="comments" role="tabpanel">
+                      <div class="mb-4">
+                          {% for comment in task.task_comments.all %}
+                             <div class="mb-3 p-2 rounded bg-secondary bg-opacity-25 border border-secondary">
+                                 <div class="d-flex justify-content-between small text-muted mb-1">
+                                     <span class="fw-bold text-info"><i class="bi bi-person-fill"></i> {{ comment.author.first_name|default:comment.author.username }}</span>
+                                     <span style="font-size: 0.8rem;">{{ comment.created_at|date:"d.m H:i" }}</span>
+                                 </div>
+                                 <div class="text-light">{{ comment.text }}</div>
+                             </div>
+                          {% empty %}
+                             <div class="text-center text-muted my-5">
+                                 <i class="bi bi-chat-square text-secondary fs-1 d-block mb-2"></i>
+                                 Здесь пока нет сообщений
+                             </div>
+                          {% endfor %}
+                      </div>
+                  </div>
+                  
+                  <!-- Вкладка Истории -->
+                  <div class="tab-pane fade" id="logs" role="tabpanel">
+                      <ul class="list-unstyled small">
+                      {% for log in task.logs.all|dictsortreversed:"created_at" %}
+                          <li class="mb-3 border-bottom border-secondary pb-2">
+                              <div class="text-muted" style="font-size: 0.75rem;">{{ log.created_at|date:"d.m.Y H:i" }}</div>
+                              <i class="bi bi-person-circle"></i> <strong class="text-warning">{{ log.user.username }}</strong>: 
+                              <span class="text-light">{{ log.action }}</span>
+                          </li>
+                      {% empty %}
+                          <li class="text-muted text-center my-4">История изменений пуста.</li>
+                      {% endfor %}
+                      </ul>
+                  </div>
+                  
+                </div>
+                
+                <!-- Форма отправки сообщения (всегда видна в чате) -->
+                <form action="{% url 'add_comment' task.pk %}" method="post">
+                    {% csrf_token %}
+                    <div class="input-group">
+                        <input type="text" name="text" class="form-control bg-dark text-light border-secondary" placeholder="Написать сообщение в чат..." required>
+                        <button class="btn btn-primary" type="submit"><i class="bi bi-send-fill"></i></button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
