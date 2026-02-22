@@ -31,7 +31,7 @@ def dashboard(request):
     if equip_filter:
         tasks = tasks.filter(equipment_type=equip_filter)
 
-    tasks = tasks.order_order_by('-created_at') if hasattr(tasks, 'order_by') else tasks.order_by('-id')
+    tasks = tasks.order_by('-created_at') if hasattr(tasks, 'order_by') else tasks
 
     context = {
         'tasks': tasks,
