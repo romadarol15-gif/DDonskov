@@ -1,0 +1,21 @@
+{% extends 'tasks_app/base.html' %}
+{% block content %}
+<div class="mb-3">
+    <a href="{% url 'user_management' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Назад к списку</a>
+</div>
+<div class="card bg-dark border-secondary" style="max-width: 600px; margin: 0 auto;">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0"><i class="bi bi-person-plus"></i> {{ title }}</h4>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <hr class="border-secondary">
+            <div class="text-end">
+                <button type="submit" class="btn btn-success"><i class="bi bi-check-lg"></i> Сохранить пользователя</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

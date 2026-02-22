@@ -1,67 +1,107 @@
 {% extends 'tasks_app/base.html' %}
 {% block content %}
-<h2>Статистика</h2>
+<h2 class="mb-4"><i class="bi bi-graph-up"></i> {% if is_employee %}Моя статистика{% else %}Общая статистика компании{% endif %}</h2>
+
 <div class="row mt-4">
-    <div class="col-md-6">
-        <h4 class="mb-3">Статусы задач</h4>
-        <canvas id="statusChart"></canvas>
+    <div class="col-md-6 mb-4">
+        <div class="card bg-dark border-secondary h-100">
+            <div class="card-header border-secondary"><h5 class="mb-0">Распределение по статусам</h5></div>
+            <div class="card-body text-center p-4">
+                <div style="max-width: 300px; margin: 0 auto;">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="col-md-6">
-        <h4 class="mb-3">Типы оборудования</h4>
-        <canvas id="equipChart"></canvas>
+    <div class="col-md-6 mb-4">
+        <div class="card bg-dark border-secondary h-100">
+            <div class="card-header border-secondary"><h5 class="mb-0">Типы оборудования</h5></div>
+            <div class="card-body">
+                <canvas id="equipChart"></canvas>
+            </div>
+        </div>
     </div>
 </div>
-<div class="row mt-5">
+
+{% if not is_employee %}
+<div class="row mt-2">
     <div class="col-md-12">
-        <h4>Задачи сотрудников</h4>
-        <table class="table table-bordered mt-3">
-            <thead class="table-dark">
-                <tr><th>Сотрудник</th><th>Количество привязанных задач</th></tr>
-            </thead>
-            <tbody>
-                {% for emp in employee_stats %}
-                <tr><td>{{ emp.username }}</td><td>{{ emp.task_count }}</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="card bg-dark border-secondary">
+            <div class="card-header border-secondary"><h5 class="mb-0">Загруженность сотрудников (Кол-во задач)</h5></div>
+            <div class="card-body p-0">
+                <table class="table table-dark table-striped mb-0">
+                    <thead>
+                        <tr><th>ФИО Сотрудника</th><th>Логин</th><th>Количество привязанных задач</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for emp in employee_stats %}
+                        <tr>
+                            <td>{{ emp.first_name }} {{ emp.last_name }}</td>
+                            <td>{{ emp.username }}</td>
+                            <td><span class="badge bg-primary fs-6">{{ emp.task_count }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
+{% endif %}
+
 <script>
     const statusData = {{ status_counts|safe }};
     const equipData = {{ equip_counts|safe }};
     
-    // График статусов
-    new Chart(document.getElementById('statusChart'), {
-        type: 'pie',
-        data: {
-            labels: statusData.map(d => d.status),
-            datasets: [{ 
-                data: statusData.map(d => d.count), 
-                backgroundColor: ['#ff9999','#66b3ff','#99ff99','#ffcc99','#c2c2f0','#ffb3e6'],
-                borderWidth: 1
-            }]
-        },
-        options: { plugins: { legend: { labels: { color: 'white' } } } }
-    });
+    // Status translation dictionary to map DB values to human-readable text
+    const statusMap = {
+        'new': 'Новая', 'assigned': 'Назначена', 'in_progress': 'В работе',
+        'clarification': 'На уточнении', 'resolved': 'Решена', 'closed': 'Закрыта/Архив'
+    };
+    
+    const equipMap = {
+        'camera': 'Камера', 'dvr': 'Регистратор', 'intercom': 'Домофония',
+        'switch': 'Коммутатор', 'acs': 'СКУД', 'ops': 'ОПС'
+    };
 
-    // График типов оборудования
-    new Chart(document.getElementById('equipChart'), {
-        type: 'bar',
-        data: {
-            labels: equipData.map(d => d.equipment_type),
-            datasets: [{ 
-                label: 'Количество задач', 
-                data: equipData.map(d => d.count), 
-                backgroundColor: '#36a2eb' 
-            }]
-        },
-        options: { 
-            plugins: { legend: { labels: { color: 'white' } } },
-            scales: {
-                y: { ticks: { color: 'white' }, beginAtZero: true },
-                x: { ticks: { color: 'white' } }
+    Chart.defaults.color = '#adb5bd';
+    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
+
+    if(statusData.length > 0) {
+        new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: statusData.map(d => statusMap[d.status] || d.status),
+                datasets: [{ 
+                    data: statusData.map(d => d.count), 
+                    backgroundColor: ['#dc3545', '#fd7e14', '#0d6efd', '#ffc107', '#198754', '#6c757d'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: { plugins: { legend: { position: 'bottom' } } }
+        });
+    }
+
+    if(equipData.length > 0) {
+        new Chart(document.getElementById('equipChart'), {
+            type: 'bar',
+            data: {
+                labels: equipData.map(d => equipMap[d.equipment_type] || d.equipment_type),
+                datasets: [{ 
+                    label: 'Количество задач', 
+                    data: equipData.map(d => d.count), 
+                    backgroundColor: '#0d6efd',
+                    borderRadius: 4
+                }]
+            },
+            options: { 
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                }
             }
-        }
-    });
+        });
+    }
 </script>
 {% endblock %}

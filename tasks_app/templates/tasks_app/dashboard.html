@@ -1,30 +1,73 @@
 {% extends 'tasks_app/base.html' %}
 {% block content %}
-<h2>{% if user.role == 'employee' %}Мои задачи{% else %}Актуальные новые задачи{% endif %}</h2>
-<table class="table table-hover mt-3">
-    <thead>
-        <tr>
-            <th>Номер</th>
-            <th>Название</th>
-            <th>Оборудование</th>
-            <th>Статус</th>
-            <th>Ответственный</th>
-            <th>Действия</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for task in tasks %}
-        <tr>
-            <td>{{ task.number }}</td>
-            <td>{{ task.title }}</td>
-            <td>{{ task.get_equipment_type_display }}</td>
-            <td><span class="badge bg-secondary">{{ task.get_status_display }}</span></td>
-            <td>{{ task.assignee.username|default:"Не назначен" }}</td>
-            <td><a href="{% url 'task_detail' task.pk %}" class="btn btn-sm btn-info">Открыть</a></td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="6">Задач пока нет.</td></tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-card-list"></i> {% if user.role == 'employee' %}Мои задачи{% else %}Панель задач{% endif %}</h2>
+    {% if user.role == 'superuser' or user.role == 'director' %}
+        <a href="{% url 'task_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Создать задачу</a>
+    {% endif %}
+</div>
+
+<div class="card p-3 mb-4 bg-dark border-secondary">
+    <form method="get" class="row g-3">
+        <div class="col-md-4">
+            <input type="text" name="q" class="form-control bg-dark text-light border-secondary" placeholder="Поиск по номеру, названию..." value="{{ q }}">
+        </div>
+        <div class="col-md-3">
+            <select name="status" class="form-select bg-dark text-light border-secondary">
+                <option value="">Все статусы</option>
+                {% for st_val, st_name in statuses %}
+                <option value="{{ st_val }}" {% if current_status == st_val %}selected{% endif %}>{{ st_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select name="equipment" class="form-select bg-dark text-light border-secondary">
+                <option value="">Всё оборудование</option>
+                {% for eq_val, eq_name in equipments %}
+                <option value="{{ eq_val }}" {% if current_equip == eq_val %}selected{% endif %}>{{ eq_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-secondary w-100"><i class="bi bi-search"></i> Найти</button>
+        </div>
+    </form>
+</div>
+
+<div class="card bg-dark border-secondary">
+    <div class="table-responsive">
+        <table class="table table-dark table-hover mb-0">
+            <thead class="table-active">
+                <tr>
+                    <th>Номер</th>
+                    <th>Название</th>
+                    <th>Оборудование</th>
+                    <th>Статус</th>
+                    <th>Ответственный</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in tasks %}
+                <tr>
+                    <td class="fw-bold text-primary">{{ task.number }}</td>
+                    <td>{{ task.title }}</td>
+                    <td>{{ task.get_equipment_type_display }}</td>
+                    <td>
+                        {% if task.status == 'new' %}<span class="badge bg-danger">Новая</span>
+                        {% elif task.status == 'in_progress' %}<span class="badge bg-primary">В работе</span>
+                        {% elif task.status == 'resolved' %}<span class="badge bg-success">Решена</span>
+                        {% elif task.status == 'closed' %}<span class="badge bg-secondary">Закрыта</span>
+                        {% else %}<span class="badge bg-info text-dark">{{ task.get_status_display }}</span>{% endif %}
+                    </td>
+                    <td>{{ task.assignee.username|default:"<span class='text-muted'>Не назначен</span>"|safe }}</td>
+                    <td><a href="{% url 'task_detail' task.pk %}" class="btn btn-sm btn-outline-light">Открыть</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center py-4 text-muted">Задач по вашему запросу не найдено.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %}
