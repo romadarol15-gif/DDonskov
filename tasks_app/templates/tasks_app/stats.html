@@ -1,11 +1,53 @@
 {% extends 'tasks_app/base.html' %}
 {% block content %}
-<h2 class="mb-4"><i class="bi bi-graph-up"></i> {% if is_employee %}Моя статистика{% else %}Общая статистика компании{% endif %}</h2>
+<div class="mb-4">
+    <h2 class="fw-bold"><i class="bi bi-graph-up text-primary"></i> {% if is_employee %}Моя статистика{% else %}Аналитика компании{% endif %}</h2>
+    <p class="text-muted">Актуальные данные по заявкам и эффективности работы.</p>
+</div>
+
+<!-- TOP METRICS CARDS -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="text-muted mb-0">{% if is_employee %}Мои задачи за 30 дней{% else %}Всего задач в базе{% endif %}</h6>
+                    <div class="bg-primary bg-opacity-25 p-2 rounded"><i class="bi bi-kanban text-primary fs-5"></i></div>
+                </div>
+                <h3 class="display-5 fw-bold text-light mb-0">{% if is_employee %}{{ recent_tasks }}{% else %}{{ total_tasks }}{% endif %}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="text-muted mb-0">{% if is_employee %}Мои решенные задачи{% else %}Нераспределенные задачи{% endif %}</h6>
+                    <div class="{% if is_employee %}bg-success{% else %}bg-warning{% endif %} bg-opacity-25 p-2 rounded">
+                        <i class="bi {% if is_employee %}bi-check-circle text-success{% else %}bi-exclamation-triangle text-warning{% endif %} fs-5"></i>
+                    </div>
+                </div>
+                <h3 class="display-5 fw-bold text-light mb-0">{% if is_employee %}{{ completed_tasks }}{% else %}{{ unassigned_tasks }}{% endif %}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="text-muted mb-0">Общий процент успешных</h6>
+                    <div class="bg-info bg-opacity-25 p-2 rounded"><i class="bi bi-award text-info fs-5"></i></div>
+                </div>
+                <h3 class="display-5 fw-bold text-light mb-0">{% if is_employee %} {{ completed_tasks }} {% else %} {{ completed_all_time }} {% endif %} <span class="fs-6 text-muted fw-normal">за всё время</span></h3>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="row mt-4">
     <div class="col-md-6 mb-4">
-        <div class="card bg-dark border-secondary h-100">
-            <div class="card-header border-secondary"><h5 class="mb-0">Распределение по статусам</h5></div>
+        <div class="card h-100">
+            <div class="card-header"><h5 class="mb-0 fw-bold">Воронка статусов</h5></div>
             <div class="card-body text-center p-4">
                 <div style="max-width: 300px; margin: 0 auto;">
                     <canvas id="statusChart"></canvas>
@@ -14,8 +56,8 @@
         </div>
     </div>
     <div class="col-md-6 mb-4">
-        <div class="card bg-dark border-secondary h-100">
-            <div class="card-header border-secondary"><h5 class="mb-0">Типы оборудования</h5></div>
+        <div class="card h-100">
+            <div class="card-header"><h5 class="mb-0 fw-bold">Популярное оборудование</h5></div>
             <div class="card-body">
                 <canvas id="equipChart"></canvas>
             </div>
@@ -26,23 +68,45 @@
 {% if not is_employee %}
 <div class="row mt-2">
     <div class="col-md-12">
-        <div class="card bg-dark border-secondary">
-            <div class="card-header border-secondary"><h5 class="mb-0">Загруженность сотрудников (Кол-во задач)</h5></div>
+        <div class="card overflow-hidden">
+            <div class="card-header"><h5 class="mb-0 fw-bold">Рейтинг загруженности сотрудников</h5></div>
             <div class="card-body p-0">
-                <table class="table table-dark table-striped mb-0">
-                    <thead>
-                        <tr><th>ФИО Сотрудника</th><th>Логин</th><th>Количество привязанных задач</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for emp in employee_stats %}
-                        <tr>
-                            <td>{{ emp.first_name }} {{ emp.last_name }}</td>
-                            <td>{{ emp.username }}</td>
-                            <td><span class="badge bg-primary fs-6">{{ emp.task_count }}</span></td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover mb-0 align-middle">
+                        <thead class="table-active">
+                            <tr>
+                                <th class="ps-4">Рейтинг</th>
+                                <th>ФИО Сотрудника</th>
+                                <th>Количество задач в работе/истории</th>
+                                <th class="text-end pe-4">Уровень</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for emp in employee_stats %}
+                            <tr>
+                                <td class="ps-4"><span class="badge bg-secondary rounded-circle px-2 py-2">{{ forloop.counter }}</span></td>
+                                <td>
+                                    <div class="fw-bold">{{ emp.first_name }} {{ emp.last_name }}</div>
+                                    <small class="text-muted">@{{ emp.username }}</small>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="progress flex-grow-1 me-3 bg-dark border border-secondary" style="height: 8px;">
+                                            <div class="progress-bar bg-primary rounded-pill" role="progressbar" style="width: {% widthratio emp.task_count total_tasks 100 %}%"></div>
+                                        </div>
+                                        <span class="badge bg-primary fs-6 px-3 rounded-pill">{{ emp.task_count }}</span>
+                                    </div>
+                                </td>
+                                <td class="text-end pe-4">
+                                    {% if emp.task_count > 10 %}<span class="text-danger"><i class="bi bi-fire"></i> Перегружен</span>
+                                    {% elif emp.task_count > 5 %}<span class="text-warning">Высокий</span>
+                                    {% else %}<span class="text-success">Нормальный</span>{% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -53,19 +117,17 @@
     const statusData = {{ status_counts|safe }};
     const equipData = {{ equip_counts|safe }};
     
-    // Status translation dictionary to map DB values to human-readable text
     const statusMap = {
         'new': 'Новая', 'assigned': 'Назначена', 'in_progress': 'В работе',
         'clarification': 'На уточнении', 'resolved': 'Решена', 'closed': 'Закрыта/Архив'
     };
-    
     const equipMap = {
         'camera': 'Камера', 'dvr': 'Регистратор', 'intercom': 'Домофония',
         'switch': 'Коммутатор', 'acs': 'СКУД', 'ops': 'ОПС'
     };
 
-    Chart.defaults.color = '#adb5bd';
-    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
 
     if(statusData.length > 0) {
         new Chart(document.getElementById('statusChart'), {
@@ -74,12 +136,15 @@
                 labels: statusData.map(d => statusMap[d.status] || d.status),
                 datasets: [{ 
                     data: statusData.map(d => d.count), 
-                    backgroundColor: ['#dc3545', '#fd7e14', '#0d6efd', '#ffc107', '#198754', '#6c757d'],
+                    backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#10b981', '#64748b'],
                     borderWidth: 0,
-                    hoverOffset: 4
+                    hoverOffset: 10
                 }]
             },
-            options: { plugins: { legend: { position: 'bottom' } } }
+            options: { 
+                plugins: { legend: { position: 'bottom', labels: { padding: 20 } } },
+                cutout: '70%'
+            }
         });
     }
 
@@ -89,16 +154,19 @@
             data: {
                 labels: equipData.map(d => equipMap[d.equipment_type] || d.equipment_type),
                 datasets: [{ 
-                    label: 'Количество задач', 
+                    label: 'Задач', 
                     data: equipData.map(d => d.count), 
-                    backgroundColor: '#0d6efd',
-                    borderRadius: 4
+                    backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                    borderColor: '#3b82f6',
+                    borderWidth: 1,
+                    borderRadius: 6
                 }]
             },
             options: { 
                 plugins: { legend: { display: false } },
                 scales: {
-                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                    y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#334155' } },
+                    x: { grid: { display: false } }
                 }
             }
         });

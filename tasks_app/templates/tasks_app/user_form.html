@@ -1,19 +1,19 @@
 {% extends 'tasks_app/base.html' %}
 {% block content %}
 <div class="mb-3">
-    <a href="{% url 'user_management' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Назад к списку</a>
+    <a href="{% url 'user_management' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3"><i class="bi bi-arrow-left"></i> К списку</a>
 </div>
-<div class="card bg-dark border-secondary" style="max-width: 600px; margin: 0 auto;">
-    <div class="card-header bg-primary text-white">
-        <h4 class="mb-0"><i class="bi bi-person-plus"></i> {{ title }}</h4>
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <div class="card-header">
+        <h4 class="mb-0 fw-bold"><i class="bi bi-person-gear text-primary me-2"></i> {{ title }}</h4>
     </div>
-    <div class="card-body">
+    <div class="card-body p-4">
         <form method="post">
             {% csrf_token %}
             {{ form.as_p }}
-            <hr class="border-secondary">
+            <hr class="border-secondary my-4">
             <div class="text-end">
-                <button type="submit" class="btn btn-success"><i class="bi bi-check-lg"></i> Сохранить пользователя</button>
+                <button type="submit" class="btn btn-success px-4 rounded-pill"><i class="bi bi-check-lg me-1"></i> Сохранить</button>
             </div>
         </form>
     </div>

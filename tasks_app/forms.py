@@ -1,5 +1,6 @@
 from django import forms
 from .models import Task, User
+from django.db.models import Q
 
 class TaskForm(forms.ModelForm):
     class Meta:
@@ -16,6 +17,17 @@ class TaskForm(forms.ModelForm):
             'comments': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'attachment': forms.FileInput(attrs={'class': 'form-control'}),
         }
+        
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user:
+            if user.role == 'employee':
+                # Employee can only assign themselves or leave it unassigned
+                self.fields['assignee'].queryset = User.objects.filter(id=user.id)
+            else:
+                # Directors/Admins can assign any employee
+                self.fields['assignee'].queryset = User.objects.filter(role='employee')
 
 class UserProfileForm(forms.ModelForm):
     class Meta:
@@ -51,3 +63,18 @@ class UserCreateForm(forms.ModelForm):
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
             'role': forms.Select(attrs={'class': 'form-select'}),
         }
+        
+    def __init__(self, *args, **kwargs):
+        current_user = kwargs.pop('current_user', None)
+        super().__init__(*args, **kwargs)
+        if current_user and current_user.role != 'superuser':
+            # Directors cannot create superusers
+            choices = list(User.ROLE_CHOICES)
+            self.fields['role'].choices = [c for c in choices if c[0] != 'superuser']
+
+class UserEditForm(UserCreateForm):
+    password = forms.CharField(label="Новый пароль (оставьте пустым, если не хотите менять)", required=False, widget=forms.PasswordInput(attrs={'class': 'form-control'}))
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Inherits the superuser restriction from UserCreateForm
