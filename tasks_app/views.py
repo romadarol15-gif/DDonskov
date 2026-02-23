@@ -2,14 +2,14 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout
 from django.contrib import messages
-from .models import Task, User, TaskComment, TaskLog, KnowledgeBaseArticle
+from .models import Task, User, TaskComment, TaskLog, KnowledgeBaseArticle, Notification
 from .forms import TaskForm, UserProfileForm, UserCreateForm, UserEditForm, KBArticleForm
 from django.db.models import Count, Q, Case, When, Value, IntegerField
 from django.utils import timezone
 from datetime import timedelta
 import json
 import csv
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 
 def custom_logout(request):
     logout(request)
@@ -142,8 +142,18 @@ def task_detail(request, pk):
             if new_task.get_priority_display() != old_priority:
                 changes.append(f"Приоритет: '{old_priority}' → '{new_task.get_priority_display()}'")
             new_assignee = new_task.assignee.username if new_task.assignee else "Не назначен"
+            
             if new_assignee != old_assignee:
                 changes.append(f"Ответственный: '{old_assignee}' → '{new_assignee}'")
+                
+                # Создаем уведомление новому исполнителю
+                if new_task.assignee and new_task.assignee != request.user:
+                    Notification.objects.create(
+                        user=new_task.assignee, 
+                        task=new_task, 
+                        message=f"На вас переведена задача: {new_task.number} ({new_task.title})"
+                    )
+
             if new_task.deadline != old_deadline:
                 changes.append(f"Дедлайн обновлен")
 
@@ -182,6 +192,15 @@ def task_create(request):
                 task.number = f"TSK-NEW-{uuid.uuid4().hex[:6].upper()}"
             task.save()
             TaskLog.objects.create(task=task, user=request.user, action="Задача создана")
+            
+            # Уведомление, если задачу сразу кому-то назначили
+            if task.assignee and task.assignee != request.user:
+                Notification.objects.create(
+                    user=task.assignee, 
+                    task=task, 
+                    message=f"Вам назначена новая задача: {task.number} ({task.title})"
+                )
+                
             messages.success(request, 'Новая задача успешно создана.')
             return redirect('dashboard')
     else:
@@ -345,3 +364,32 @@ def export_stats_csv(request):
             t.updated_at.strftime("%Y-%m-%d %H:%M")
         ])
     return response
+
+# ---- AJAX NOTIFICATIONS API ----
+
+@login_required
+def get_notifications(request):
+    notifs = Notification.objects.filter(user=request.user, is_read=False).order_by('-created_at')
+    data = [{
+        'id': n.id,
+        'message': n.message,
+        'task_id': n.task.id,
+        'created_at': n.created_at.strftime("%d.%m %H:%M")
+    } for n in notifs]
+    return JsonResponse({'notifications': data})
+
+@login_required
+def mark_notification_read(request, pk):
+    if request.method == 'POST':
+        notif = get_object_or_404(Notification, pk=pk, user=request.user)
+        notif.is_read = True
+        notif.save()
+        return JsonResponse({'status': 'ok'})
+    return JsonResponse({'status': 'error'})
+
+@login_required
+def mark_all_notifications_read(request):
+    if request.method == 'POST':
+        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        return JsonResponse({'status': 'ok'})
+    return JsonResponse({'status': 'error'})
